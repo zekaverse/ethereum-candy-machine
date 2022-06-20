@@ -1,16 +1,16 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { Contract } from "ethers";
 import { ethers, waffle } from "hardhat";
 import fixture, { MockFixture } from "./setup/fixture";
 import dayjs from "dayjs";
+import { CandyMachine, CandyMachine__factory } from "../typechain-types";
 
 describe("CandyMachine", function () {
   const PRICE = ethers.utils.parseEther("0.5");
 
   let signers: SignerWithAddress[];
   let mock: MockFixture;
-  let candyMachine: Contract;
+  let candyMachine: CandyMachine;
 
   before(async function () {
     signers = await ethers.getSigners();
@@ -19,7 +19,9 @@ describe("CandyMachine", function () {
   beforeEach(async function () {
     mock = await waffle.loadFixture(fixture);
 
-    const CandyMachine = await ethers.getContractFactory("CandyMachine");
+    const CandyMachine = (await ethers.getContractFactory(
+      "CandyMachine"
+    )) as CandyMachine__factory;
     candyMachine = await CandyMachine.deploy(
       mock.payment.address,
       mock.whitelist.address,

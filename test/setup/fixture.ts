@@ -1,22 +1,24 @@
 import { Fixture } from "ethereum-waffle";
-import { Contract } from "ethers";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+import { ERC20 } from "../../typechain-types";
 
 export interface MockFixture {
-  payment: Contract;
-  whitelist: Contract;
+  payment: ERC20;
+  whitelist: ERC20;
 }
 
 const fixture: Fixture<MockFixture> = async (wallets, provider) => {
-  const MockERC20 = await ethers.getContractFactory("MockERC20");
+  const MockERC20 = await hre.ethers.getContractFactory("MockERC20");
 
   const [payment, whitelist] = await Promise.all([
-    MockERC20.deploy("Payment", "PM", ethers.utils.parseEther("1000")).then(
+    MockERC20.deploy("Payment", "PM", hre.ethers.utils.parseEther("1000")).then(
       (contract) => contract.deployed()
     ),
-    MockERC20.deploy("Whitelist", "WL", ethers.utils.parseEther("1000")).then(
-      (contract) => contract.deployed()
-    ),
+    MockERC20.deploy(
+      "Whitelist",
+      "WL",
+      hre.ethers.utils.parseEther("1000")
+    ).then((contract) => contract.deployed()),
   ]);
 
   return { payment, whitelist };

@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 contract CandyMachine is ERC721, ERC721URIStorage, Ownable {
-    address public paymentErc20;
-    address public whitelistedErc20;
+    address public payment;
+    address public whitelist;
     uint256 public redeemed;
     uint256 public price;
     uint256 public liveTimestamp;
@@ -17,17 +17,24 @@ contract CandyMachine is ERC721, ERC721URIStorage, Ownable {
     string[] public configs;
 
     constructor(
-        address _paymentErc20,
-        address _whitelistedErc20,
+        address _payment,
+        address _whitelist,
         uint256 _price,
         string[] memory _configs,
         string memory _tokenName,
         string memory _tokenSymbol
     ) ERC721(_tokenName, _tokenSymbol) {
-        paymentErc20 = _paymentErc20;
-        whitelistedErc20 = _whitelistedErc20;
+        payment = _payment;
+        whitelist = _whitelist;
         configs = _configs;
         price = _price;
+    }
+
+    /**
+     *   return list of configs
+     */
+    function configsList() public view returns (string[] memory) {
+        return configs;
     }
 
     /**
@@ -84,7 +91,7 @@ contract CandyMachine is ERC721, ERC721URIStorage, Ownable {
      */
     function mint() public {
         bool isOwner = owner() == msg.sender;
-        // bool isWhitelisted = ERC20(whitelistedErc20).balanceOf(msg.sender) >= 0;
+        // bool isWhitelisted = ERC20(whitelist).balanceOf(msg.sender) >= 0;
 
         require(configs.length > redeemed, "unavailabled");
         require(locked, "candy machine not yet locked");
@@ -93,7 +100,7 @@ contract CandyMachine is ERC721, ERC721URIStorage, Ownable {
             "candy machine not yet lived"
         );
 
-        ERC20(paymentErc20).transferFrom(msg.sender, address(this), price);
+        ERC20(payment).transferFrom(msg.sender, address(this), price);
 
         _safeMint(msg.sender, redeemed);
         _setTokenURI(redeemed, configs[redeemed]);

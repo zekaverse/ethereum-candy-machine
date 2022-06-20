@@ -7,71 +7,93 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
-// import "@openzeppelin/contracts/utils/Counters.sol";
-
 contract CandyMachine is ERC721, ERC721URIStorage, Ownable {
     address public paymentErc20;
-    uint256 public available;
+    address public whitelistedErc20;
     uint256 public redeemed;
     uint256 public price;
     uint256 public liveTimestamp;
-    bool public lived;
+    bool public locked;
     string[] public configs;
 
     constructor(
         address _paymentErc20,
+        address _whitelistedErc20,
         uint256 _price,
         string[] memory _configs,
         string memory _tokenName,
         string memory _tokenSymbol
     ) ERC721(_tokenName, _tokenSymbol) {
         paymentErc20 = _paymentErc20;
-        available = _configs.length;
+        whitelistedErc20 = _whitelistedErc20;
         configs = _configs;
         price = _price;
     }
 
     /**
-     * set token uri at index, only when not lived
+     * set token uri at index, only when not locked
      */
     function set(uint256 _index, string memory _uri) public onlyOwner {
-        require(!lived);
+        require(!locked);
         configs[_index] = _uri;
     }
 
     /**
-     * add new token uri, only when not lived
+     * add new token uri, only when not locked
      */
     function add(string memory _uri) public onlyOwner {
-        require(!lived);
+        require(!locked);
         configs.push(_uri);
-        available += 1;
+    }
+
+    /**
+     * remove token of given index, only when not locked
+     */
+    function remove(uint256 _index) public onlyOwner {
+        require(!locked);
+        configs[_index] = configs[configs.length - 1];
+        configs.pop();
+    }
+
+    /**
+     * get remaining mintable token in candy machine
+     */
+    function available() public view returns (uint256) {
+        return configs.length;
     }
 
     /**
      * get remaining mintable token in candy machine
      */
     function remaining() public view returns (uint256) {
-        return available - redeemed;
+        return configs.length - redeemed;
     }
 
     /**
-     * set candy machine to be lived at timestamp
+     * set candy machine to be locked at timestamp
      */
     function setLive(uint256 _timestamp) public onlyOwner {
-        require(!lived);
-        lived = true;
+        require(!locked);
+        locked = true;
         liveTimestamp = _timestamp;
     }
 
     /**
      * mint one token
-     * TODO add payment
+     * TODO whitelist goods
      */
     function mint() public {
-        require(available > redeemed, "unavailabled");
-        require(lived, "candy machine not yet locked in");
-        require(block.timestamp >= liveTimestamp, "mint not yet lived");
+        bool isOwner = owner() == msg.sender;
+        // bool isWhitelisted = ERC20(whitelistedErc20).balanceOf(msg.sender) >= 0;
+
+        require(configs.length > redeemed, "unavailabled");
+        require(locked, "candy machine not yet locked");
+        require(
+            isOwner || block.timestamp >= liveTimestamp,
+            "candy machine not yet lived"
+        );
+
+        ERC20(paymentErc20).transferFrom(msg.sender, address(this), price);
 
         _safeMint(msg.sender, redeemed);
         _setTokenURI(redeemed, configs[redeemed]);

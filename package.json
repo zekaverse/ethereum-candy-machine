@@ -4,8 +4,7 @@
   "description": "candy-machine smart contract for ethereum",
   "scripts": {
     "test": "hardhat test",
-    "build": "hardhat compile",
-    "postinstall": "npm run build"
+    "build": "hardhat compile"
   },
   "repository": {
     "type": "git",

@@ -109,9 +109,9 @@ contract CandyMachine is ERC721, ERC721URIStorage, Ownable {
 
     // NOTE: overriding section
 
-    function _baseURI() internal pure override returns (string memory) {
-        return "http://example.org/";
-    }
+    // function _baseURI() internal pure override returns (string memory) {
+    //     return "http://example.org/";
+    // }
 
     function _burn(uint256 tokenId)
         internal

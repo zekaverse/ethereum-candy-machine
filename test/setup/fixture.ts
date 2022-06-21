@@ -13,12 +13,12 @@ const fixture: Fixture<MockFixture> = async (wallets, provider) => {
   const [payment, whitelist] = await Promise.all([
     MockERC20.deploy("Payment", "PM", hre.ethers.utils.parseEther("1000")).then(
       (contract) => contract.deployed()
-    ),
+    ) as Promise<ERC20>,
     MockERC20.deploy(
       "Whitelist",
       "WL",
       hre.ethers.utils.parseEther("1000")
-    ).then((contract) => contract.deployed()),
+    ).then((contract) => contract.deployed()) as Promise<ERC20>,
   ]);
 
   return { payment, whitelist };

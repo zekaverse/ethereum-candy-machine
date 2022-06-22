@@ -56,18 +56,24 @@ async function main() {
   app.set("view engine", "pug");
 
   app.get("/", async (req, res) => {
-    res.render("index", {
-      message: Date.now(),
-      list: await candyMachine.configsList(),
+    const [list, price, available, redeemed] = await Promise.all([
+      candyMachine.configsList(),
+      candyMachine.price(),
+      candyMachine.available(),
+      candyMachine.redeemed(),
+    ]);
+    const data = {
+      list: list,
       address: candyMachine.address,
-      price: await candyMachine.price(),
-      available: await candyMachine.available(),
-      redeemed: await candyMachine.redeemed(),
-    });
+      price: price,
+      available: available,
+      redeemed: redeemed,
+    };
+    res.render("index", data);
   });
 
   app.get("/mint", async (req, res) => {
-    const rc = await candyMachine
+    await candyMachine
       .mint()
       .then((tx) => tx.wait())
       .catch(() => console.log("error occured in minting"));

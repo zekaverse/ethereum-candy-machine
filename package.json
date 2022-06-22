@@ -12,8 +12,8 @@
     "url": "git+https://github.com/zekaverse/ethereum-candy-machine.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Thanawat Yodnil",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/zekaverse/ethereum-candy-machine/issues"
   },

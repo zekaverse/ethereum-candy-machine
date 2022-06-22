@@ -1,58 +1,50 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers, waffle } from "hardhat";
-import fixture, { MockFixture } from "./setup/fixture";
+import fixture from "./setup/fixture";
 import dayjs from "dayjs";
-import { CandyMachine, CandyMachine__factory } from "../typechain-types";
+import { CandyMachine, MockERC20 } from "../typechain-types";
 
 describe("CandyMachine", function () {
-  const PRICE = ethers.utils.parseEther("0.5");
+  let PRICE: bigint;
 
-  let signers: SignerWithAddress[];
-  let mock: MockFixture;
+  let owner: SignerWithAddress;
+  let minter: SignerWithAddress;
+  let whitelisted: SignerWithAddress;
+
   let candyMachine: CandyMachine;
-
-  before(async function () {
-    signers = await ethers.getSigners();
-  });
+  let payment: MockERC20;
+  let whitelist: MockERC20;
 
   beforeEach(async function () {
-    mock = await waffle.loadFixture(fixture);
-
-    const CandyMachine = (await ethers.getContractFactory(
-      "CandyMachine"
-    )) as CandyMachine__factory;
-    candyMachine = await CandyMachine.deploy(
-      mock.payment.address,
-      mock.whitelist.address,
-      PRICE,
-      [],
-      "Zekaverse",
-      "ZKV"
-    ).then((contract) => contract.deployed());
+    const mock = await waffle.loadFixture(fixture);
+    [owner, minter, whitelisted] = mock.signers;
+    [candyMachine, payment, whitelist] = mock.contracts;
+    PRICE = mock.price;
   });
 
-  describe("add", function () {
+  describe("addConfig", function () {
     it("should be able to add configs", async function () {
-      await candyMachine.add("test").then((tx) => tx.wait());
+      await candyMachine.addConfig("test").then((tx) => tx.wait());
       const config = await candyMachine.configs(0);
 
       expect(config).to.eq("test");
     });
     it("should not be able to add configs when locked", async function () {
       await candyMachine.setLive(0).then((tx) => tx.wait());
-      await expect(candyMachine.add("test")).to.be.reverted;
+      await expect(candyMachine.addConfig("test")).to.be.reverted;
     });
     it("should only be able to call by owner only", async function () {
-      await expect(candyMachine.connect(signers[1]).add("test")).to.be.reverted;
+      await expect(candyMachine.connect(minter).addConfig("test")).to.be
+        .reverted;
     });
   });
 
-  describe("remove", function () {
+  describe("removeConfig", function () {
     it("should be able to remove", async function () {
-      await candyMachine.add("test#1").then((tx) => tx.wait());
-      await candyMachine.add("test#2").then((tx) => tx.wait());
-      await candyMachine.remove(0).then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
+      await candyMachine.addConfig("test#2").then((tx) => tx.wait());
+      await candyMachine.removeConfig(0).then((tx) => tx.wait());
 
       const available = await candyMachine.available();
       const config = await candyMachine.configs(0);
@@ -62,17 +54,18 @@ describe("CandyMachine", function () {
     });
     it("should not be able to remove when locked", async function () {
       await candyMachine.setLive(0).then((tx) => tx.wait());
-      await expect(candyMachine.remove(0)).to.be.reverted;
+      await expect(candyMachine.removeConfig(0)).to.be.reverted;
     });
     it("should only be able to call by owner only", async function () {
-      await expect(candyMachine.connect(signers[1]).add("test")).to.be.reverted;
+      await expect(candyMachine.connect(minter).addConfig("test")).to.be
+        .reverted;
     });
   });
 
-  describe("set", function () {
+  describe("setConfig", function () {
     it("should be able to set config", async function () {
-      await candyMachine.add("test#1").then((tx) => tx.wait());
-      await candyMachine.set(0, "test#2").then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
+      await candyMachine.setConfig(0, "test#2").then((tx) => tx.wait());
 
       const config = await candyMachine.configs(0);
 
@@ -80,10 +73,32 @@ describe("CandyMachine", function () {
     });
     it("should not be able to set when locked", async function () {
       await candyMachine.setLive(0).then((tx) => tx.wait());
-      await expect(candyMachine.set(0, "newTest")).to.be.reverted;
+      await expect(candyMachine.setConfig(0, "newTest")).to.be.reverted;
     });
     it("should only be able to call by owner only", async function () {
-      await expect(candyMachine.connect(signers[1]).add("test")).to.be.reverted;
+      await expect(candyMachine.connect(minter).addConfig("test")).to.be
+        .reverted;
+    });
+  });
+
+  describe("resetConfig", function () {
+    it("should be able to reset config", async function () {
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
+      await candyMachine.addConfig("test#2").then((tx) => tx.wait());
+
+      await candyMachine.resetConfig().then((tx) => tx.wait());
+
+      const configs = await candyMachine.configsList();
+
+      expect(configs).to.be.an("array");
+      expect(configs).to.have.lengthOf(0);
+    });
+    it("should not be able to set when locked", async function () {
+      await candyMachine.setLive(0).then((tx) => tx.wait());
+      await expect(candyMachine.resetConfig()).to.be.reverted;
+    });
+    it("should only be able to call by owner only", async function () {
+      await expect(candyMachine.connect(minter).resetConfig()).to.be.reverted;
     });
   });
 
@@ -104,66 +119,143 @@ describe("CandyMachine", function () {
       await expect(candyMachine.setLive(0)).to.be.reverted;
     });
     it("should only be able to call by owner only", async function () {
-      await expect(candyMachine.connect(signers[1]).add("test")).to.be.reverted;
+      await expect(candyMachine.connect(minter).addConfig("test")).to.be
+        .reverted;
+    });
+  });
+
+  describe("updateCandyMachine", function () {
+    it("should be able to update candy machine", async function () {
+      await candyMachine
+        .updateCandyMachine(
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          BigInt(1.5e19),
+          true,
+          BigInt(1e19)
+        )
+        .then((tx) => tx.wait());
+
+      const payment = await candyMachine.payment();
+      const whitelist = await candyMachine.whitelist();
+      const price = await candyMachine.price();
+      const presale = await candyMachine.presale();
+      const discount = await candyMachine.discount();
+
+      expect(payment).to.eq(ethers.constants.AddressZero);
+      expect(whitelist).to.eq(ethers.constants.AddressZero);
+      expect(price).to.eq(BigInt(1.5e19));
+      expect(presale).to.be.true;
+      expect(discount).to.eq(BigInt(1e19));
+    });
+
+    it("should not be able update when locked", async function () {
+      await candyMachine.setLive(0).then((tx) => tx.wait());
+      await expect(
+        candyMachine.updateCandyMachine(
+          payment.address,
+          whitelist.address,
+          PRICE,
+          false,
+          0
+        )
+      ).to.be.reverted;
+    });
+    it("should only be able to call by owner only", async function () {
+      await expect(
+        candyMachine
+          .connect(minter)
+          .updateCandyMachine(
+            payment.address,
+            whitelist.address,
+            PRICE,
+            false,
+            0
+          )
+      ).to.be.reverted;
     });
   });
 
   describe("mint", async function () {
     it("should be able to mint", async function () {
-      await candyMachine.add("test#1").then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
       await candyMachine.setLive(0).then((tx) => tx.wait());
-
-      await mock.payment
-        .approve(candyMachine.address, PRICE)
-        .then((tx) => tx.wait());
 
       let mintTransaction: any;
       const mint = () => {
-        if (!mintTransaction) mintTransaction = candyMachine.mint();
+        if (!mintTransaction)
+          mintTransaction = candyMachine.connect(minter).mint();
         return mintTransaction;
       };
 
       await expect(mint).to.changeTokenBalances(
-        mock.payment,
-        [signers[0], candyMachine],
-        [BigInt(-PRICE), PRICE]
+        payment,
+        [minter, owner],
+        [-PRICE, PRICE]
       );
       await expect(mint())
         .to.emit(candyMachine, "Transfer")
-        .withArgs(ethers.constants.AddressZero, signers[0].address, 0);
+        .withArgs(ethers.constants.AddressZero, minter.address, 0);
     });
 
     it("should be able to mint even if not yet lived (for author)", async function () {
       const next5Minute = dayjs().add(5, "minute").unix();
 
-      await candyMachine.add("test#1").then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
       await candyMachine.setLive(next5Minute).then((tx) => tx.wait());
 
-      await expect(candyMachine.mint()).to.not.revertedWith(
-        "candy machine not yet lived"
-      );
+      await expect(candyMachine.mint()).to.not.reverted;
     });
     it("should not be able to mint when not lived", async function () {
       const next5Minute = dayjs().add(5, "minute").unix();
 
-      await mock.payment
-        .transfer(signers[1].address, PRICE)
-        .then((tx) => tx.wait());
-
-      await mock.payment
-        .connect(signers[1])
-        .approve(candyMachine.address, PRICE)
-        .then((tx) => tx.wait());
-
-      await candyMachine.add("test#1").then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
       await candyMachine.setLive(next5Minute).then((tx) => tx.wait());
 
-      await expect(candyMachine.connect(signers[1]).mint()).to.be.revertedWith(
+      await expect(candyMachine.connect(minter).mint()).to.be.revertedWith(
         "candy machine not yet lived"
       );
     });
+    it("should be able to mint and burn whitelist token", async function () {
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
+      await candyMachine.setLive(0).then((tx) => tx.wait());
+
+      await expect(() =>
+        candyMachine.connect(whitelisted).mint()
+      ).to.changeTokenBalance(whitelist, whitelisted, BigInt(-1));
+    });
+    it("should be able to mint even if not yet lived, if minter is whitelisted and presale is enabled", async function () {
+      const next5Minute = dayjs().add(5, "minute").unix();
+
+      await candyMachine
+        .updateCandyMachine(payment.address, whitelist.address, PRICE, true, 0)
+        .then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
+      await candyMachine.setLive(next5Minute).then((tx) => tx.wait());
+
+      await expect(candyMachine.connect(whitelisted).mint()).to.not.reverted;
+    });
+    it("should be able to mint with discount, if minter is whitelisted", async function () {
+      const discount = BigInt(0.25e19);
+
+      await candyMachine
+        .updateCandyMachine(
+          payment.address,
+          whitelist.address,
+          PRICE,
+          false,
+          discount
+        )
+        .then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
+      await candyMachine.setLive(0).then((tx) => tx.wait());
+
+      await expect(() =>
+        candyMachine.connect(whitelisted).mint()
+      ).to.changeTokenBalance(payment, whitelisted, -(PRICE - discount));
+    });
     it("should not be able to mint when not locked", async function () {
-      await candyMachine.add("test#1").then((tx) => tx.wait());
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
 
       await expect(candyMachine.mint()).to.be.revertedWith(
         "candy machine not yet locked"

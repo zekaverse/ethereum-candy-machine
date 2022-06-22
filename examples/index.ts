@@ -1,26 +1,32 @@
 import express from "express";
 import path from "path";
-import { ethers } from "ethers";
+import { ethers, Signer } from "ethers";
 import { faker } from "@faker-js/faker";
 import {
+  CandyMachine,
   CandyMachine__factory,
+  MockERC20,
   MockERC20__factory,
 } from "ethereum-candy-machine/typechain-types";
 
-async function deployCandyMachine() {
+async function deployCandyMachine(): Promise<
+  [CandyMachine, MockERC20, MockERC20, Signer]
+> {
   const candyMachineFactory = new CandyMachine__factory();
   const erc20Factory = new MockERC20__factory();
   const provider = new ethers.providers.JsonRpcProvider();
   const signer = provider.getSigner();
 
-  const price = BigInt(0);
+  const price = BigInt(1.5e19);
   const name = "Test";
   const symbol = "TST";
-  const configs = [
-    faker.image.cats(300, 300, true),
-    faker.image.cats(300, 300, true),
-    faker.image.cats(300, 300, true),
-  ];
+  const available = BigInt(10);
+
+  const configs: string[] = [];
+
+  for (let i = 0; i < available; i++) {
+    configs.push(faker.image.image(300, 300, true));
+  }
 
   const payment = await erc20Factory
     .connect(signer)
@@ -36,34 +42,40 @@ async function deployCandyMachine() {
     .then((contract) => contract.deployed());
 
   await candyMachine.setLive(0).then((tx) => tx.wait());
+  await payment
+    .approve(candyMachine.address, price * available)
+    .then((tx) => tx.wait());
 
   console.table({
     candyMachine: candyMachine.address,
     payment: payment.address,
     whitelist: whitelist.address,
     price,
-    // configs: JSON.stringify(configs),
   });
 
-  return candyMachine;
+  return [candyMachine, payment, whitelist, signer];
 }
 
 async function main() {
   const app = express();
 
-  const candyMachine = await deployCandyMachine();
+  let [candyMachine, payment, whitelist, signer] = await deployCandyMachine();
 
   app.set("view engine", "pug");
 
   app.get("/", async (req, res) => {
-    const [list, price, available, redeemed] = await Promise.all([
-      candyMachine.configsList(),
-      candyMachine.price(),
-      candyMachine.available(),
-      candyMachine.redeemed(),
-    ]);
+    const [list, price, available, redeemed, paymentBalance] =
+      await Promise.all([
+        candyMachine.configsList(),
+        candyMachine.price(),
+        candyMachine.available(),
+        candyMachine.redeemed(),
+        payment.balanceOf(await signer.getAddress()),
+      ]);
+
     const data = {
       list: list,
+      payment: paymentBalance,
       address: candyMachine.address,
       price: price,
       available: available,
@@ -77,6 +89,12 @@ async function main() {
       .mint()
       .then((tx) => tx.wait())
       .catch(() => console.log("error occured in minting"));
+
+    res.redirect("/");
+  });
+
+  app.get("/redeploy", async (req, res) => {
+    [candyMachine, payment, whitelist, signer] = await deployCandyMachine();
 
     res.redirect("/");
   });

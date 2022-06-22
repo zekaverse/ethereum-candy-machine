@@ -15,15 +15,22 @@ html
     script(src="/scripts/web3.js" type="module") 
   body
     div.container
-      h1 Candy machine 🍭
-      h2 Smart contract, written with Solidity
-      main.flex
-        img(src="https://via.placeholder.com/300/300")
+      div.title-flex
+        div
+          h1 Candy machine 🍭
+          h2 Smart contract, written with Solidity
+        div.flex-col.align-items-end
+          a(href="/redeploy")
+            button Redeploy
+          span #{(payment / 1e19).toFixed(2)} PM
+      main.main-grid
+        each url in list
+          img.items(src=url)
         div.detail
           div.title ADDRESS
           div= address
           div.title PRICE
-          div= price
+          div= price / 1e19
           div.title AVAILABLE
           div= available
           div.title REDEEMED
@@ -31,4 +38,4 @@ html
           div.title REMAINING
           div= available - redeemed
           a(href="/mint")
-            button#mint Mint
+            button#mint.disabled Mint

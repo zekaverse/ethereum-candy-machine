@@ -22,8 +22,14 @@ h1 {
   padding: 5px 10px;
 }
 
-img {
-  border-radius: 5px;
+.title-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+a {
+  color: #e07a5f;
 }
 
 .flex {
@@ -31,28 +37,70 @@ img {
   gap: 10px;
 }
 
+.flex-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  grid-gap: 10px;
+}
+
+.align-items-end {
+  align-items: end;
+}
+
 .detail {
   display: flex;
   flex-direction: column;
   gap: 5px;
   align-items: start;
+  font-size: 1.1em;
 }
 
 .detail .title {
-  font-size: 0.8em;
+  font-size: 0.7em;
 }
 
-.detail button {
+button {
   background-color: #e07a5f;
   border: none;
-  padding: 5px 20px;
+  padding: 5px 10px;
   border-radius: 5px;
   color: #f4f1de;
+}
+
+button:hover {
+  cursor: pointer;
+  opacity: 0.5;
   transition: 0.1s all;
 }
 
 .detail button:hover {
-  cursor: pointer;
   transform: rotate(-15deg);
   transition: 0.1s all;
+}
+
+.items {
+  display: none;
+  border-radius: 10px;
+  opacity: 0;
+  background-color: #3f3f3f;
+}
+
+.show {
+  display: block;
+  animation: fadeIn 1s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

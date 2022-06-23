@@ -37,14 +37,16 @@ async function deployCandyMachine(): Promise<
     configs.push(url);
   }
 
-  const payment = await erc20Factory
-    .connect(signer)
-    .deploy("Payment", "PM", BigInt(0))
-    .then((contract) => contract.deployed());
-  const whitelist = await erc20Factory
-    .connect(signer)
-    .deploy("Whitelist", "WL", BigInt(0))
-    .then((contract) => contract.deployed());
+  const [payment, whitelist] = await Promise.all([
+    erc20Factory
+      .connect(signer)
+      .deploy("Payment", "PM", BigInt(0))
+      .then((contract) => contract.deployed()),
+    erc20Factory
+      .connect(signer)
+      .deploy("Whitelist", "WL", BigInt(0))
+      .then((contract) => contract.deployed()),
+  ]);
   const candyMachine = await candyMachineFactory
     .connect(signer)
     .deploy(
@@ -105,7 +107,7 @@ async function main() {
         candyMachine.price(),
         candyMachine.available(),
         candyMachine.redeemed(),
-        payment.balanceOf(await minter.getAddress()),
+        payment.balanceOf(address),
       ]);
 
     const data = {

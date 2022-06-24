@@ -72,8 +72,9 @@ describe("CandyMachine", function () {
       expect(config).to.eq("test#2");
     });
     it("should not be able to set when locked", async function () {
+      await candyMachine.addConfig("test#1").then((tx) => tx.wait());
       await candyMachine.setLive(0).then((tx) => tx.wait());
-      await expect(candyMachine.setConfig(0, "newTest")).to.be.reverted;
+      await expect(candyMachine.setConfig(0, "test#2")).to.be.reverted;
     });
     it("should only be able to call by owner only", async function () {
       await expect(candyMachine.connect(minter).addConfig("test")).to.be
@@ -104,7 +105,7 @@ describe("CandyMachine", function () {
 
   describe("setLive", function () {
     it("should be able to set lock state and correct timestamp", async function () {
-      const now = Math.floor(Date.now() / 1000);
+      const now = dayjs().unix();
       await candyMachine.setLive(now).then((tx) => tx.wait());
 
       const liveTimestamp = await candyMachine.liveTimestamp();

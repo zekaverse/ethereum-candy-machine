@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/openurl": "^1.0.0",
     "ethereum-candy-machine": "file:..",
     "express": "^4.18.1",
     "node-fetch": "^2.6.7",
